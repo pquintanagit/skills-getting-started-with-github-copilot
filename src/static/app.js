@@ -13,6 +13,9 @@ document.addEventListener("DOMContentLoaded", () => {
       // Clear loading message
       activitiesList.innerHTML = "";
 
+      // Reset activity select (keep placeholder)
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
+
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
@@ -21,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft = details.max_participants - details.participants.length;
 
         const participantsList = details.participants
-          .map((p) => `<li>${p}</li>`)
+          .map((p) => `<li>${p} <span class='delete-icon' onclick='deleteParticipant(event, \'${p}\')'>🗑️</span></li>`)
           .join("");
 
         activityCard.innerHTML = `
@@ -31,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <p><strong>Spots Available:</strong> ${spotsLeft}/${details.max_participants}</p>
           <div class="participants-section">
             <strong>Current Participants:</strong>
-            <ul class="participants-list">
+            <ul class="participants-list" style="list-style-type: none; padding: 0;">
               ${participantsList}
             </ul>
           </div>
@@ -50,6 +53,23 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error fetching activities:", error);
     }
   }
+
+  window.deleteParticipant = async function(event, participant) {
+    event.stopPropagation();
+    const activity = document.getElementById("activity").value;
+    try {
+      const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(participant)}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        fetchActivities();
+      } else {
+        console.error("Error unregistering participant:", await response.json());
+      }
+    } catch (error) {
+      console.error("Error unregistering participant:", error);
+    }
+  };
 
   // Handle form submission
   signupForm.addEventListener("submit", async (event) => {
@@ -72,6 +92,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities to show the newly registered participant
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
